@@ -1,0 +1,28 @@
+name: Build & Deploy GitHub Pages
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Install & Export with Shinylive
+        run: |
+          cd app
+          pip install -r requirements.txt
+          pip install shinylive
+          shinylive export app app
+          mv app docs
+      - uses: actions/upload-pages-artifact@v1
+        with:
+          path: docs
+      - uses: actions/deploy-pages@v1
