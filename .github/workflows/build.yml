@@ -1,28 +1,46 @@
 name: Build & Deploy GitHub Pages
+
 on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install uv
+        uses: yezz123/setup-uv@v4  # Installe uv en tant que gestionnaire de paquets
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
-      - name: Install & Export with Shinylive
+          python-version: '3.11'  # Tu peux changer selon ton projet
+
+      - name: Install dependencies with uv
+        working-directory: app
         run: |
-          cd app
-          pip install -r requirements.txt
-          pip install shinylive
+          uv pip install -r pyproject.toml
+          uv pip install shinylive
+
+      - name: Export app with shinylive
+        working-directory: app
+        run: |
           shinylive export app app
-          mv app docs
-      - uses: actions/upload-pages-artifact@v1
+          mv app ../docs
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v1
         with:
           path: docs
-      - uses: actions/deploy-pages@v1
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v1
