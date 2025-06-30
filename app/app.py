@@ -1,12 +1,23 @@
+from io import StringIO
+from slugify import slugify
+import tempfile
+import importlib.util
+import os
+
 from shiny import App, ui, reactive, render
-from openfisca_core.parameters import load_parameter_file, ParameterNode
 
-# Charger les paramètres
-param_root: ParameterNode = load_parameter_file("openfisca_country_template/parameters.yaml")
+from openfisca_country_template import CountryTaxBenefitSystem
+from openfisca_core.parameters import ParameterScale
+from openfisca_survey_manager.tests.test_scenario import create_randomly_initialized_survey_scenario
 
-def build_param_ui(node: ParameterNode, path=""):
+cts = CountryTaxBenefitSystem()
+param_root = cts.parameters
+period = 2016
+
+
+def build_param_ui(node, path=""):
     items = []
-    if node.children:
+    if hasattr(node, "children") and node.children:
         for key, child in node.children.items():
             items.append(
                 ui.accordion_panel(
@@ -17,10 +28,17 @@ def build_param_ui(node: ParameterNode, path=""):
         return [ui.accordion(*items, open_all=False)]
     else:
         full_id = path.replace(".", "_")
+
+        if isinstance(node, ParameterScale):
+            return [ui.markdown(f"**{node.__dict__}**")]
+
         return [
-            ui.input_text(f"{full_id}_value", "Value", str(node.value)),
-            ui.input_text(f"{full_id}_start", "Start", str(node.start)),
-            ui.input_text(f"{full_id}_end", "End", str(node.end)),
+            ui.input_text(
+                f"{full_id}_value_at_{slugify(paramatinstant.instant_str, replacements=[('-', '_')])}",
+                f"{paramatinstant.instant_str}",
+                value=str(paramatinstant.value)
+            )
+            for paramatinstant in getattr(node, "values_list", [])
         ]
 
 def build_reform_code(inputs):
@@ -30,43 +48,101 @@ def build_reform_code(inputs):
         "class CustomReform(Reform):",
         "    def apply(self):",
         "        super().apply()",
+        "        self.modify_parameter(modifier_function=modify_my_parameters)",
+        "",
+        "    def modify_my_parameters(self):",
     ]
-    for key in inputs.keys():
-        if key.endswith("_value"):
-            base = key[:-6]
-            param_path = base.replace("_", ".")
-            value = inputs[key]()
-            start = inputs.get(f"{base}_start", lambda: "")()
-            end = inputs.get(f"{base}_end", lambda: "")()
-            lines += [
-                f"        self.modify_parameter([{repr(param_path)}], {{",
-                f"            '{start}': {{'value': {value}, 'end': '{end}'}}",
-                "        })",
-            ]
+    for key in inputs._map.keys():
+        if "_value_at_" not in key:
+            print(f"⚠️ Clé non éligible : {key}")
+            continue
+
+        print(f"🔍 Traitement de la clé : {key}")
+        base = key[:-20]
+        print(f"  - Base : {base}")
+        param_path = base.replace("_", ".")
+        value = inputs[key]()
+        lines += [
+            f"        parameters.{param_path}(period={period}, value={value})",
+            "",
+        ]
     return "\n".join(lines)
 
-app_ui = ui.page_fluid(
-    ui.panel_title("🧮 Générateur de réforme OpenFisca"),
-    *build_param_ui(param_root),
-    ui.hr(),
-    ui.h4("🔧 Code Python généré"),
-    ui.output_text_verbatim("reform_code", placeholder=True),
-    ui.download_button("download_py", "Télécharger reform.py")
+app_ui = ui.layout_columns(
+    ui.page_fluid(
+        ui.panel_title("🧲 Générateur de réforme OpenFisca"),
+        *build_param_ui(param_root),
+        ui.hr(),
+        ui.input_action_button("gen_code", "🛠 Générer le code"),
+        ui.h4("🔧 Code Python généré"),
+        ui.output_text_verbatim("reform_display", placeholder=True),
+        ui.input_action_button("exec_btn", "Exécuter"),
+        ui.output_text("exec_result"),
+        ui.download_button("download_py", "📅 Télécharger reform.py"),
+    ),
+    ui.page_fluid(
+        ui.panel_title("🧲 Résultats"),
+        ui.markdown("Cette section est réservée aux résultats de la réforme appliquée."),
+        ui.output_text("exec_reform"),
+    )
 )
 
 def server(input, output, session):
     code_rx = reactive.Value("")
+    result = reactive.Value("")
+    store_rx = reactive.Value({})
+
+    @reactive.Effect
+    @reactive.event(input.gen_code)
+    def generate():
+        print("🔄 Génération déclenchée")
+        code = build_reform_code(input)
+        print("✅ Code généré :\n", code)
+        code_rx.set(code)
 
     @output
     @render.text
-    def reform_code():
-        code = build_reform_code(input)
-        code_rx.set(code)
-        return code
+    def reform_display():
+        return code_rx.get()
+
+    @reactive.Effect
+    def execute_code():
+        if input.exec_btn() > 0:
+            code = code_rx.get()
+            with tempfile.TemporaryDirectory() as tempdir:
+                path = os.path.join(tempdir, "temp_module.py")
+                with open(path, "w") as f:
+                    f.write(code)
+                spec = importlib.util.spec_from_file_location("temp_module", path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+
+                if hasattr(module, "CustomReform"):
+                    reform_class = module.CustomReform
+                    store_rx.set({"reform_class": reform_class})
+                    result.set("Réforme appliquée avec succès.")
+                else:
+                    result.set("Classe CustomReform non trouvée dans le module.")
+
+    @output
+    @render.text
+    def exec_result():
+        return result.get()
+
+    @output
+    @render.text
+    def exec_reform():
+        store = store_rx.get()
+        if "reform_class" in store:
+            reform_class = store.get("reform_class")
+            scenario = create_randomly_initialized_survey_scenario(collection=None, reform=reform_class)
+            return str(scenario), "Aucune réforme appliquée."
+        else:
+            return "Aucune réforme appliquée."
 
     @output
     @render.download(filename="reform.py")
     def download_py():
-        return code_rx.get().encode()
+        return StringIO(code_rx.get())
 
 app = App(app_ui, server)
