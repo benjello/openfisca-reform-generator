@@ -33,12 +33,13 @@ def build_param_ui(node, path=""):
 
         return [
             ui.input_text(
-                f"{full_id}_value_at_{slugify(paramatinstant.instant_str, replacements=[('-', '_')])}",
-                f"{paramatinstant.instant_str}",
-                value=str(paramatinstant.value)
+            f"{full_id}_value_at_{param_at_instant.instant_str.replace('-', '_')}",
+            f"{param_at_instant.instant_str}",
+            value=str(param_at_instant.value)
             )
-            for paramatinstant in getattr(node, "values_list", [])
+            for param_at_instant in getattr(node, "values_list", [])
         ]
+
 
 def build_reform_code(inputs):
     lines = [
