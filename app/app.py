@@ -14,7 +14,6 @@ cts = CountryTaxBenefitSystem()
 param_root = cts.parameters
 period = 2016
 
-
 def build_param_ui(node, path=""):
     items = []
     if hasattr(node, "children") and node.children:
@@ -47,10 +46,10 @@ def build_reform_code(inputs):
         "",
         "class CustomReform(Reform):",
         "    def apply(self):",
-        "        super().apply()",
-        "        self.modify_parameter(modifier_function=modify_my_parameters)",
+        "        self.modify_parameter(modifier_function=self.modify_my_parameters)",
         "",
-        "    def modify_my_parameters(self):",
+        "    @staticmethod",
+        "    def modify_my_parameters(parameters):",
     ]
     for key in inputs._map.keys():
         if "_value_at_" not in key:
@@ -70,7 +69,7 @@ def build_reform_code(inputs):
 
 app_ui = ui.layout_columns(
     ui.page_fluid(
-        ui.panel_title("🧲 Générateur de réforme OpenFisca"),
+        ui.panel_title("🤲 Générateur de réforme OpenFisca"),
         *build_param_ui(param_root),
         ui.hr(),
         ui.input_action_button("gen_code", "🛠 Générer le code"),
@@ -81,7 +80,7 @@ app_ui = ui.layout_columns(
         ui.download_button("download_py", "📅 Télécharger reform.py"),
     ),
     ui.page_fluid(
-        ui.panel_title("🧲 Résultats"),
+        ui.panel_title("🤲 Résultats"),
         ui.markdown("Cette section est réservée aux résultats de la réforme appliquée."),
         ui.output_text("exec_reform"),
     )
@@ -134,9 +133,10 @@ def server(input, output, session):
     def exec_reform():
         store = store_rx.get()
         if "reform_class" in store:
-            reform_class = store.get("reform_class")
-            scenario = create_randomly_initialized_survey_scenario(collection=None, reform=reform_class)
-            return str(scenario), "Aucune réforme appliquée."
+            # reform_class = store.get("reform_class")
+            # reform_instance = reform_class(baseline=cts)
+            scenario = create_randomly_initialized_survey_scenario(collection=None)
+            return str(scenario)
         else:
             return "Aucune réforme appliquée."
 
