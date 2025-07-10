@@ -15,21 +15,27 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Install uv
-        uses: yezz123/setup-uv@v4  # Installe uv en tant que gestionnaire de paquets
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'  # Tu peux changer selon ton projet
+          python-version: '3.11'
 
-      - name: Install dependencies with uv
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('app/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
         working-directory: app
         run: |
-          uv pip install -r pyproject.toml
-          uv pip install shinylive
+          pip install --upgrade pip
+          pip install .
+          pip install shinylive
 
       - name: Export app with shinylive
         working-directory: app
@@ -38,9 +44,9 @@ jobs:
           mv app ../docs
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v2
         with:
           path: docs
 
       - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v1
+        uses: actions/deploy-pages@v2
