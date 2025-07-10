@@ -34,7 +34,7 @@ jobs:
         working-directory: app
         run: |
           pip install --upgrade pip
-          pip install ../.
+          pip install .
           pip install shinylive
 
       - name: Export app with shinylive
