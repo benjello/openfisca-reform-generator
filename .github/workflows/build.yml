@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install .
+          pip install .  # Shinylive included in deps
 
       - name: Export app with shinylive
         run: |
