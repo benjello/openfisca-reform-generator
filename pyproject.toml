@@ -5,12 +5,18 @@ description = "Application Shiny Python pour générer des réformes paramétriq
 authors = [{ name = "Mahdi Ben Jelloul", email = "benjello@example.com" }]
 requires-python = ">=3.9,<3.12"
 dependencies = [
-    "shinylive >= 0.3.0",
     "openfisca-core",
     "openfisca-country-template<8.0.0",
     "openfisca-survey-manager>=3.0.4",
     "ipython>=8.18.1",
     "slugify>=0.0.1",
+    "pandas>=2.0.0",
+    "streamlit>=1.46.1",
+]
+
+[project.optional-dependencies]
+shiny = [
+    "shinylive >= 0.3.0",
 ]
 
 [tool.uv]

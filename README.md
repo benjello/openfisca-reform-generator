@@ -6,13 +6,11 @@ Générateur Shiny Python d’une réforme OpenFisca, packagé avec Shinylive po
 
 ```bash
 git clone https://github.com/benjello/openfisca-reform-generator.git
-cd openfisca-reform-generator/app
-uv pip compile pyproject.toml -o app/requirements.txt
-uv run shinylive export app docs
-uv run python -m http.server --directory docs --bind localhost 8008
+cd openfisca-reform-generator
+uv run streamlit run app/streamlit_app.py --server.port 8502 --server.address 0.0.0.0
 ```
 
-Ouvrir http://127.0.0.1:8008/
+Ouvrir http://127.0.0.1:8502/
 
 ## Déploiement sur GitHub Pages
 
