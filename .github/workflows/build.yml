@@ -40,8 +40,7 @@ jobs:
       - name: Export app with shinylive
         working-directory: app
         run: |
-          shinylive export app app
-          mv app ../docs
+          shinylive export app ../docs
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
