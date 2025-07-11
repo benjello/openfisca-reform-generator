@@ -37,7 +37,8 @@ jobs:
 
       - name: Export app with shinylive
         run: |
-          shinylive export app docs
+          pip install rsconnect-python
+          rsconnect deploy shiny --app-name mon-app app.py
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
