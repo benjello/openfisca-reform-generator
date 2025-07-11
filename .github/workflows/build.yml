@@ -31,16 +31,13 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
-        working-directory: app
         run: |
           pip install --upgrade pip
           pip install .
-          pip install shinylive
 
       - name: Export app with shinylive
-        working-directory: app
         run: |
-          shinylive export app ../docs
+          shinylive export app docs
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
