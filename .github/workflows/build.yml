@@ -35,7 +35,7 @@ jobs:
           pip install --upgrade pip
           pip install .  # Shinylive included in deps
 
-      - name: Export app with shinylive
+      - name: Export app on ShinyApps.io
         run: |
           pip install rsconnect-python
           rsconnect deploy shiny --app-name mon-app app.py
