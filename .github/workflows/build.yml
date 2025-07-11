@@ -38,7 +38,7 @@ jobs:
       - name: Export app on ShinyApps.io
         run: |
           pip install rsconnect-python
-          rsconnect deploy shiny --name openfisca-reform-generator app.py
+          rsconnect deploy shiny --name openfisca-reform-generator app
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
