@@ -3,8 +3,14 @@ import tempfile
 import importlib.util
 import os
 
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+
+
 from shiny import App, ui, render, reactive
-from typing import Dict, Any, Optional, Set
+from typing import Dict, Optional, Set
 
 
 from openfisca_core.parameters import ParameterScale
@@ -121,7 +127,35 @@ def build_param_ui(node, path: str = "", tracker: Optional[SimpleParameterTracke
         full_id = path.replace(".", "")
 
         if isinstance(node, ParameterScale):
-            return [ui.markdown(f"**{node.name}**: {node.description}")]
+            inputs = []
+            # print(f"**{node.name}**: {node.__dict__}")
+
+            for rank, bracket in enumerate(node.brackets):
+                for key in ['threshold', 'rate', 'amount']:
+                    # print("\n")
+                    # print(f"bracket: {bracket.__dict__}")
+                    # print("\n")
+
+                    child = bracket.children.get(key)
+                    if child is None:
+                        continue
+
+                    for param_at_instant in getattr(child, "values_list", []):
+                        print(f"param_at_instant: {param_at_instant.__dict__}")
+                        field_id = f"{full_id}_bracket_{rank}_{key}_value_at_{param_at_instant.instant_str.replace('-', '_')}"
+                        initial_value = str(param_at_instant.value)
+                        original_path = f"{path}.{param_at_instant.instant_str}"
+
+                        # Enregistrer avec le chemin original
+                        tracker.set_initial_with_path(field_id, initial_value, original_path)
+                        inputs.append(
+                            ui.input_text(
+                                field_id,
+                                f"{key} at {param_at_instant.instant_str}",
+                                value=initial_value
+                            )
+                        )
+            return inputs
 
         # Créer les inputs et enregistrer les valeurs initiales
         inputs = []
@@ -221,7 +255,9 @@ app_ui = app_ui = ui.layout_columns(
     ui.page_fluid(
         ui.panel_title("Résultats"),
         ui.markdown("Cette section est réservée aux résultats de la réforme appliquée."),
-        ui.output_ui("exec_reform_md")
+        ui.output_ui("exec_reform_md"),
+        ui.output_plot("scenario_plot"),
+        ui.output_plot("scenario_pivot_plot"),
         ),
 )
 
@@ -231,6 +267,7 @@ def server(input, output, session):
     reform_code_rx = reactive.Value("")
     result = reactive.Value("")
     store_rx = reactive.Value({})
+    scenario_rx = reactive.Value(None)
 
     # Initialiser le tracker avec la session
     param_tracker.set_session(session)
@@ -257,15 +294,6 @@ def server(input, output, session):
                 result += f"• {path}: {values['original']} → {values['current']} \n"
             return result
         return "Aucune modification détectée"
-
-    # # Statut en temps réel
-    # @output
-    # @render.text
-    # def status_output():
-    #     if param_tracker.has_changes():
-    #         changed_fields = param_tracker.get_changed_fields()
-    #         return f"🔄 {len(changed_fields)} champ(s) modifié(s)"
-    #     return "✅ Aucune modification en cours"
 
     # Reset tous les champs
     @reactive.effect
@@ -297,6 +325,7 @@ def server(input, output, session):
     def download_py():
         return StringIO(reform_code_rx.get())
 
+
     @reactive.Effect
     def execute_code():
         if input.exec_btn() > 0:
@@ -313,6 +342,9 @@ def server(input, output, session):
                     reform_class = module.CustomReform
                     store_rx.set({"reform_class": reform_class})
                     result.set("Réforme appliquée avec succès.")
+                    # Generate scenario once and store it
+                    scenario = create_randomly_initialized_survey_scenario(collection=None, reform=reform_class)
+                    scenario_rx.set(scenario)
                 else:
                     result.set("Classe CustomReform non trouvée dans le module.")
 
@@ -342,6 +374,60 @@ def server(input, output, session):
             return ui.markdown(md_content)
         else:
             return "Aucune réforme appliquée."
+
+
+    @output
+    @render.plot
+    def scenario_plot():
+        store = store_rx.get()
+        if "reform_class" in store:
+            reform_class = store["reform_class"]
+            scenario = create_randomly_initialized_survey_scenario(collection=None, reform=reform_class)
+
+            variables = ["basic_income", "income_tax", "housing_allowance"]
+            data = []
+
+            for var in variables:
+                baseline = scenario.compute_aggregate(var, period=period, use_baseline=True)
+                reform = scenario.compute_aggregate(var, period=period)
+                data.append((var, baseline, reform))
+
+            df = pd.DataFrame(data, columns=["Variable", "Baseline", "Reform"])
+            df["Difference"] = df["Reform"] - df["Baseline"]
+
+            ax = df.set_index("Variable")[["Baseline", "Reform"]].plot.bar(rot=0)
+            ax.set_ylabel("Montants agrégés")
+            ax.set_title("Comparaison réforme vs baseline")
+            plt.tight_layout()
+            return ax
+
+
+    @output
+    @render.plot
+    def scenario_pivot_plot():
+        store = store_rx.get()
+        if "reform_class" in store:
+            reform_class = store["reform_class"]
+
+            housing_occupancy_status_names = tbs.variables['housing_occupancy_status'].possible_values.names
+
+            scenario = create_randomly_initialized_survey_scenario(collection=None, reform=reform_class)
+
+            df = scenario.compute_pivot_table(values=["total_benefits"], columns=['housing_occupancy_status'], period=period, difference=True, weighted=False)
+            df = df.rename(columns=dict(zip(range(len(housing_occupancy_status_names)), housing_occupancy_status_names)))
+
+            print("Pivot table computed:", df)
+
+            ax = df.plot.bar(rot=0)
+            ax.set_ylabel("Basic Income")
+            ax.set_title("Comparaison Différence par Housing Occupancy Status")
+            ax.legend(title="Housing Occupancy Status")
+            ax.grid(axis='y')
+            plt.ylabel("Total Benefits")
+            plt.title("Total Benefits by Housing Occupancy Status")
+            plt.legend(title="Housing Occupancy Status")
+            plt.tight_layout()
+            return ax
 
 
 # Créer l'application
