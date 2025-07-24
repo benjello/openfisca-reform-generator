@@ -125,36 +125,72 @@ def build_param_ui(node, path: str = "", tracker: Optional[SimpleParameterTracke
         return [ui.accordion(*items, open_all=False)]
     else:
         full_id = path.replace(".", "")
-
+        scale_df = pd.DataFrame()
         if isinstance(node, ParameterScale):
             inputs = []
-            # print(f"**{node.name}**: {node.__dict__}")
-
             for rank, bracket in enumerate(node.brackets):
+                bracket_df = pd.DataFrame()
+
                 for key in ['threshold', 'rate', 'amount']:
-                    # print("\n")
+                    print("\n")
                     # print(f"bracket: {bracket.__dict__}")
                     # print("\n")
 
                     child = bracket.children.get(key)
+                    print(f"key: {rank, key}")
                     if child is None:
                         continue
-
                     for param_at_instant in getattr(child, "values_list", []):
-                        print(f"param_at_instant: {param_at_instant.__dict__}")
-                        field_id = f"{full_id}_bracket_{rank}_{key}_value_at_{param_at_instant.instant_str.replace('-', '_')}"
                         initial_value = str(param_at_instant.value)
-                        original_path = f"{path}.{param_at_instant.instant_str}"
+                        date = f"{param_at_instant.instant_str}"
+                        bracket_df.at[date, key] = initial_value
+                scale_df = pd.concat([scale_df, pd.concat([bracket_df], keys=[rank], axis=1)], axis=1)
 
-                        # Enregistrer avec le chemin original
-                        tracker.set_initial_with_path(field_id, initial_value, original_path)
-                        inputs.append(
-                            ui.input_text(
-                                field_id,
-                                f"{key} at {param_at_instant.instant_str}",
-                                value=initial_value
+            scale_df = scale_df.sort_index()
+            for col in scale_df.columns:
+                first_valid = scale_df[col].first_valid_index()
+                if first_valid is not None:
+                    scale_df.loc[first_valid:, col] = scale_df.loc[first_valid:, col].ffill()
+
+            scale_df = scale_df.sort_index(ascending=False)
+            print(scale_df)
+
+            for instant in scale_df.index:
+                input_elements = []
+                for col, series in scale_df.items():
+                    rank, key = col
+
+                    initial_value = series[instant]
+                    if pd.isna(initial_value):
+                        continue
+                    field_id = f"{full_id}_bracket_{rank}_{key}_value_at_{instant.replace('-', '_')}"
+                    original_path = f"{path}.brackets[{rank}].{key}.{instant.replace('-', '_')}"
+                    print(f"field_id: {field_id} = {initial_value}")
+                    # Enregistrer avec le chemin original
+                    tracker.set_initial_with_path(field_id, initial_value, original_path)
+                    input_elements.append(
+                        ui.input_text(
+                            field_id,
+                            f"bracket {rank} {key}",
+                            value=initial_value
                             )
                         )
+                print(f"Input elements for {instant}: {input_elements}")
+                if input_elements:
+                    inputs.append(
+                        ui.p(f"{instant}")  # Ajouter les inputs pour chaque instant
+                        )
+                    inputs.append(
+                        ui.row(
+                            [
+                                ui.column(6, element)
+                                for element in input_elements
+                            ]
+                        )
+                    )
+                    inputs.append(
+                        ui.hr()
+                    )
             return inputs
 
         # Créer les inputs et enregistrer les valeurs initiales
@@ -384,7 +420,7 @@ def server(input, output, session):
             reform_class = store["reform_class"]
             scenario = create_randomly_initialized_survey_scenario(collection=None, reform=reform_class)
 
-            variables = ["basic_income", "income_tax", "housing_allowance"]
+            variables = ["basic_income", "income_tax", "housing_allowance", "social_security_contribution"]
             data = []
 
             for var in variables:
