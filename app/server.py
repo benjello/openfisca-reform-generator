@@ -5,6 +5,7 @@ import tempfile
 import os
 import importlib.util
 
+
 def server_logic(input, output, session, param_tracker, tbs, period):
     reform_code_rx = reactive.Value("")
     reform_status = reactive.Value("")
@@ -36,6 +37,8 @@ def server_logic(input, output, session, param_tracker, tbs, period):
     @reactive.event(input.reset_all)
     def reset_all():
         param_tracker.reset_all_ui()
+        reform_code_rx.set("")
+        store_rx.set({"reform_class": None})
         session.send_input_message("changes_output", {"value": "Aucune modification détectée"})
 
     @output
@@ -43,7 +46,7 @@ def server_logic(input, output, session, param_tracker, tbs, period):
     def reform_display():
         return reform_code_rx.get()
 
-    @reactive.Effect
+    @reactive.effect
     @reactive.event(input.gen_code)
     def generate():
         reform_code = build_reform_code(param_tracker, period)
@@ -55,7 +58,7 @@ def server_logic(input, output, session, param_tracker, tbs, period):
         from io import StringIO
         return StringIO(reform_code_rx.get())
 
-    @reactive.Effect
+    @reactive.effect
     def execute_code():
         if input.exec_btn() > 0:
             code = reform_code_rx.get()
@@ -80,4 +83,4 @@ def server_logic(input, output, session, param_tracker, tbs, period):
         return reform_status.get()
 
     scenario_analysis = ScenarioAnalysis(store_rx, tbs, period)
-    scenario_analysis.register_outputs(output)
+    scenario_analysis.register_outputs(input, output)

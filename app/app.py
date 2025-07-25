@@ -1,6 +1,6 @@
 from shiny import App
 
-from openfisca_country_template import CountryTaxBenefitSystem
+from openfisca_nouvelle_caledonie import CountryTaxBenefitSystem
 
 
 from parameter import SimpleParameterTracker
@@ -10,7 +10,7 @@ from server import server_logic
 param_tracker = SimpleParameterTracker()
 
 # Configuration
-period = 2017
+period = 2023
 
 # Initialisation
 tbs = CountryTaxBenefitSystem()

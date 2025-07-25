@@ -1,7 +1,3 @@
 *.pyc
-openfisca_reform_generator.egg-info/dependency_links.txt
-openfisca_reform_generator.egg-info/PKG-INFO
-openfisca_reform_generator.egg-info/requires.txt
-openfisca_reform_generator.egg-info/SOURCES.txt
-openfisca_reform_generator.egg-info/top_level.txt
+*.egg-info/*
 .venv

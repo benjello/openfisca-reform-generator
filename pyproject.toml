@@ -1,12 +1,11 @@
 [project]
-name = "openfisca-reform-generator"
+name = "openfisca-nc-reform-generator"
 version = "0.1.0"
-description = "Application Shiny Python pour générer des réformes paramétriques OpenFisca"
-authors = [{ name = "Mahdi Ben Jelloul", email = "benjello@example.com" }]
+description = "Application Shiny Python pour générer des réformes paramétriques OpenFisca pour la Nouvelle Calédonie"
+authors = [{ name = "Mahdi Ben Jelloul", email = "mahdi.benjelloul@gmail.com" }]
 requires-python = ">=3.9,<3.12"
 dependencies = [
     "openfisca-core",
-    "openfisca-country-template<8.0.0",
     "openfisca-survey-manager>=3.1.0",
     "ipython>=8.18.1",
     "shiny>=1.0.0",
@@ -27,3 +26,7 @@ dev = [
     "ipython>=8.18.1",
 ]
 # facultatif — permet de fixer les sources ou configurations supplémentaires
+
+
+[tool.uv.sources]
+openfisca-nouvelle_caledonie-data = { path = "../openfisca-nouvelle_caledonie-data" }
