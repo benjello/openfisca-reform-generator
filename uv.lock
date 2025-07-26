@@ -1294,7 +1294,7 @@ dev = [
 
 [[package]]
 name = "openfisca-survey-manager"
-version = "3.2.0"
+version = "3.2.1"
 source = { directory = "../openfisca-survey-manager" }
 dependencies = [
     { name = "chardet" },
