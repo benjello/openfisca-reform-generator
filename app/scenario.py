@@ -1,8 +1,11 @@
 import pandas as pd
 from shiny import ui, render, reactive
 from shinywidgets import render_widget
+import plotly.express as px
+
+
 from openfisca_nouvelle_caledonie_data.survey_scenario import DSFSurveyScenario
-import plotly.graph_objects as go
+from openfisca_nouvelle_caledonie_data.aggregates import NouvelleCaledonieAggregates
 
 
 class AbstractScenarioAnalysis:
@@ -16,6 +19,11 @@ class AbstractScenarioAnalysis:
         store = self.store_rx.get()
         return store.get("reform_class")
 
+    def aggregates(self, variables=["revenu_net_global_imposable", "impot_brut", "impot_net"], ignore_labels=False):
+        scenario = self._create_scenario()
+        aggregates = NouvelleCaledonieAggregates(scenario)
+        aggregates_df = aggregates.get_data_frame(default="baseline", ignore_labels=ignore_labels)
+        return aggregates_df
 
 class ScenarioAnalysis(AbstractScenarioAnalysis):
     def __init__(self, store_rx, tbs, period):
@@ -28,56 +36,40 @@ class ScenarioAnalysis(AbstractScenarioAnalysis):
                 return self.scenario
 
             self.scenario = DSFSurveyScenario(self.period, reform=reform_class)
+        else:
+            self.scenario = DSFSurveyScenario(self.period)
         return self.scenario
 
-    def render_reform_md(self):
-        reform_class = self._get_reform_class()
-        if not reform_class:
-            return "Aucune réforme appliquée."
+    def render_aggregates(self):
+        return self.aggregates()
 
-        scenario = self._create_scenario()
-        if not scenario:
-            return "Erreur lors de la création du scénario."
-
-        md_content = f"### Scénario généré avec la réforme `{reform_class.__name__}`\n\n"
-        variables = ["revenu_net_global_imposable", "impot_brut", "impot_net"]
-        md_content += "Aggrégats : \n"
-        for variable in variables:
-            baseline_value = int(scenario.compute_aggregate(variable, period=self.period, use_baseline=True, weighted=False))
-            reform_value = int(scenario.compute_aggregate(variable, period=self.period, weighted=False))
-            diff = reform_value - baseline_value
-            md_content += f"- **{variable}**: baseline {baseline_value}, réforme {reform_value}, différence {diff}\n"
-        return ui.markdown(md_content)
-
-    def render_scenario_plot(self):
-        reform_class = self._get_reform_class()
-        if not reform_class:
-            return None
-
+    def render_aggregates_beneficiaries_plot(self):
         scenario = self._create_scenario()
         if not scenario:
             return None
 
-        variables = ["revenu_net_global_imposable", "impot_brut", "impot_net"]
-        data = []
-        for var in variables:
-            baseline = scenario.compute_aggregate(var, period=self.period, use_baseline=True, weighted=False)
-            reform = scenario.compute_aggregate(var, period=self.period, weighted=False)
-            data.append((var, baseline, reform))
-        df = pd.DataFrame(data, columns=["Variable", "Baseline", "Reform"])
-        df["Difference"] = df["Reform"] - df["Baseline"]
-        fig = go.Figure(data=[
-            go.Bar(name='Baseline', x=df['Variable'], y=df['Baseline']),
-            go.Bar(name='Reform', x=df['Variable'], y=df['Reform'])
-        ])
-        fig.update_layout(barmode='group', title_text='Comparaison réforme vs baseline', yaxis_title='Montants agrégés')
+        aggregates_df = self.aggregates(ignore_labels=True)
+        df = pd.wide_to_long(aggregates_df, i=["label", "entity"], j="type", stubnames=["baseline", "reform", "relative_difference", "absolute_difference"], sep = "_", suffix=r'\w+').reset_index()
+        df_melted = df.melt(
+            id_vars=["label", "type"],
+            value_vars=["baseline", "reform", "absolute_difference"],
+            var_name="simulation",
+            value_name="value"
+            ).astype({'value': 'float'})
+        fig = px.bar(
+            df_melted[df_melted["type"] == "beneficiaries"],
+            x="value",
+            y="label",
+            color="simulation",
+            barmode="group",
+            orientation="h",
+            title="Baseline vs Reform Beneficiaries"
+            )
+        fig.update_xaxes(title_text="Bénéficiaires")
+        fig.update_yaxes(title_text=None)
         return fig
 
     def render_scenario_pivot_plot(self):
-        reform_class = self._get_reform_class()
-        if not reform_class:
-            return None
-
         scenario = self._create_scenario()
         if not scenario:
             return None
@@ -97,10 +89,12 @@ class ScenarioAnalysis(AbstractScenarioAnalysis):
         return fig
 
     def register_outputs(self, input, output):
+
         @output
-        @render.ui
-        def exec_reform_md():
-            return self.render_reform_md()
+        @render.data_frame
+        def aggregates_table():
+            aggregates_df = self.render_aggregates()
+            return render.DataTable(aggregates_df, filters=True, width="100%")
 
         @output
         @render_widget

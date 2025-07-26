@@ -102,49 +102,54 @@ def build_param_ui(node, path: str = "", tracker: Optional[SimpleParameterTracke
 
         return inputs
 
+
+def build_results_ui():
+    return (
+        ui.markdown("Cette section est réservée aux résultats de la réforme appliquée."),
+        ui.output_data_frame("aggregates_table"),
+        output_widget("scenario_plot"),
+        output_widget("scenario_pivot_plot"),
+    )
+
+
 def app_ui(tbs, tracker):
     param_root = tbs.parameters
-    return ui.layout_columns(
-        ui.page_fluid(
-            ui.panel_title("Générateur de réforme OpenFisca"),
-            ui.page_fluid(
-                ui.card(
-                    ui.card_header("Paramètres"),
-                    ui.card_body(
-                        *build_param_ui(param_root, tracker=tracker)
+    return ui.page_navbar(
+        ui.nav_panel(
+            ui.panel_title("Réforme"),
+            ui.card(
+                ui.card_header("Paramètres"),
+                ui.card_body(
+                    *build_param_ui(param_root, tracker=tracker)
                     )
                 ),
-                ui.hr(),
-                ui.row(
-                    ui.column(3, ui.input_action_button("reset_all", "Reset tout", class_="btn-warning")),
+            ui.hr(),
+            ui.row(
+                ui.column(3, ui.input_action_button("reset_all", "Reset tout", class_="btn-warning")),
                 ),
-                ui.hr(),
-                ui.row(
-                    ui.column(
-                        8,
-                        ui.card(
-                            ui.card_header("📝 Changements détectés"),
-                            ui.card_body(
-                                ui.output_text_verbatim("changes_output", placeholder=True)
-                            ),
-                            class_="shadow-sm mb-4"
+            ui.hr(),
+            ui.row(
+                ui.column(
+                    8,
+                    ui.card(
+                        ui.card_header("📝 Changements détectés"),
+                        ui.card_body(
+                            ui.output_text_verbatim("changes_output", placeholder=True)
                         ),
-                        align="center"
-                    )
+                        class_="shadow-sm mb-4"
+                    ),
+                    align="center"
+                    ),
                 ),
-                ui.input_action_button("gen_code", "🛠 Générer le code"),
-                ui.h4("🔧 Code Python généré"),
-                ui.output_text_verbatim("reform_display", placeholder=True),
-                ui.input_action_button("exec_btn", "Exécuter"),
-                ui.output_text("exec_result"),
-                ui.download_button("download_py", "📅 Télécharger reform.py"),
+            ui.input_action_button("gen_code", "🛠 Générer le code"),
+            ui.h4("🔧 Code Python généré"),
+            ui.output_text_verbatim("reform_display", placeholder=True),
+            ui.input_action_button("exec_btn", "Exécuter"),
+            ui.output_text("exec_result"),
+            ui.download_button("download_py", "📅 Télécharger reform.py"),
             ),
-        ),
-        ui.page_fluid(
+        ui.nav_panel(
             ui.panel_title("Résultats"),
-            ui.markdown("Cette section est réservée aux résultats de la réforme appliquée."),
-            ui.output_ui("exec_reform_md"),
-            output_widget("scenario_plot"),
-            output_widget("scenario_pivot_plot"),
-        ),
-    )
+            build_results_ui()
+            ),
+        )

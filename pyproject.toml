@@ -30,3 +30,4 @@ dev = [
 
 [tool.uv.sources]
 openfisca-nouvelle_caledonie-data = { path = "../openfisca-nouvelle_caledonie-data" }
+openfisca-survey-manager = { path = "../openfisca-survey-manager" }
