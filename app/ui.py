@@ -166,7 +166,34 @@ def build_results_ui():
                 ui.hr(),
                 output_widget("aggregates_beneficiaries_plot"),
                 ui.hr(),
-                output_widget("scenario_pivot_plot")
+                ui.input_select(
+                    "pivot_plot_variable",
+                    "Select variable to plot",
+                    choices=["impot_brut", "revenu_net_global_imposable", "impot_net"],
+                    selected="impot_brut",
+                ),
+                ui.input_select(
+                    "pivot_plot_aggfunc",
+                    "Select aggregation function",
+                    choices=["sum", "mean"],
+                    selected="sum",
+                ),
+                output_widget("scenario_pivot_plot"),
+                ui.hr(),
+                ui.h4("Pivot Table Data"),
+                ui.input_select(
+                    "pivot_table_variable",
+                    "Select variable for table",
+                    choices=["impot_brut", "revenu_net_global_imposable", "impot_net"],
+                    selected="impot_brut",
+                ),
+                ui.input_select(
+                    "pivot_table_aggfunc",
+                    "Select aggregation function for table",
+                    choices=["sum", "mean"],
+                    selected="sum",
+                ),
+                ui.output_data_frame("pivot_table_data")
 
             )
         ),

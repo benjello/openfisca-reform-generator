@@ -81,30 +81,50 @@ class ScenarioAnalysis(AbstractScenarioAnalysis):
         fig.update_yaxes(title_text=None)
         return fig
 
-    def render_scenario_pivot_plot(self):
+    def render_scenario_pivot_plot(self, selected_variable: str = "impot_brut", aggfunc: str = "sum"):
         scenario = self._create_scenario()
         if not scenario:
             return None
 
-        df = scenario.compute_pivot_table(values=["impot_brut"], columns=['parts_fiscales'], period=self.period, difference=True, weighted=False)
+        df = scenario.compute_pivot_table(
+            values=[selected_variable],
+            columns=['parts_fiscales'],
+            aggfunc=aggfunc,
+            period=self.period,
+            difference=True,
+            weighted=False)
         df_reset = df.reset_index()
-        df_melted = df_reset.melt(id_vars=df_reset.columns[0], var_name="Parts Fiscales", value_name="Total Impôts Bruts")
-        print(df_melted)  # Debugging line to check the DataFrame structure
+        df_melted = df_reset.melt(id_vars=df_reset.columns[0], var_name="Parts Fiscales", value_name="Value")
+
         fig = px.bar(
             df_melted,
-            x=df_reset.columns[0],
-            y="Total Impôts Bruts",
+            x="Parts Fiscales",
+            y="Value",
             color="Parts Fiscales",
             barmode="group",
-            title="Répartition des impôts bruts par parts fiscales",
-            labels={df_reset.columns[0]: "Parts Fiscales", "Total Impôts Bruts": "Total Impôts Bruts"}
+            title=f"Répartition de {selected_variable} par parts fiscales ({aggfunc})",
+            labels={df_reset.columns[0]: "Parts Fiscales", "Value": selected_variable}
         )
         fig.update_layout(
             xaxis_title="Parts Fiscales",
-            yaxis_title="Total Impôts Bruts",
+            yaxis_title=f"Value ({aggfunc})",
             legend_title="Parts Fiscales"
         )
         return fig
+
+    def render_pivot_table(self, selected_variable: str = "impot_brut", aggfunc: str = "sum"):
+        scenario = self._create_scenario()
+        if not scenario:
+            return pd.DataFrame() # Return empty DataFrame if no scenario
+
+        df = scenario.compute_pivot_table(
+            values=[selected_variable],
+            index=['parts_fiscales'],
+            aggfunc=aggfunc,
+            period=self.period,
+            difference=True,
+            weighted=False)
+        return df # Return the pivot table as a DataFrame
 
     def register_outputs(self, input, output):
 
@@ -126,5 +146,17 @@ class ScenarioAnalysis(AbstractScenarioAnalysis):
 
         @output
         @render_widget
+        @reactive.event(input.pivot_plot_variable, input.pivot_plot_aggfunc)
         def scenario_pivot_plot():
-            return self.render_scenario_pivot_plot()
+            selected_variable = input.pivot_plot_variable()
+            selected_aggfunc = input.pivot_plot_aggfunc()
+            return self.render_scenario_pivot_plot(selected_variable, selected_aggfunc)
+
+        @output
+        @render.data_frame
+        @reactive.event(input.pivot_table_variable, input.pivot_table_aggfunc)
+        def pivot_table_data():
+            selected_variable = input.pivot_table_variable()
+            selected_aggfunc = input.pivot_table_aggfunc()
+            df = self.render_pivot_table(selected_variable, selected_aggfunc)
+            return render.DataTable(df.reset_index(), filters=True, width="100%")
