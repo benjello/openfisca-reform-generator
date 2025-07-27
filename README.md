@@ -1,14 +1,13 @@
 # openfisca-reform-generator
 
-Générateur Shiny Python d’une réforme OpenFisca, packagé avec Shinylive pour être déployé sur GitHub Pages.
+Générateur Shiny Python d’une réforme OpenFisca.
 
 ## Installation locale
 
 ```bash
 git clone https://github.com/benjello/openfisca-reform-generator.git
-cd openfisca-reform-generator/app
-uv pip compile pyproject.toml -o app/requirements.txt
-
+uv shiny sync
+uv run shiny run src/app/app.py --reload
 ```
 
-Ouvrir http://127.0.0.1:8008/
+Ouvrir `http://127.0.0.1:8008/` dans un navigateur.
