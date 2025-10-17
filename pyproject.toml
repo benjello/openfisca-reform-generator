@@ -25,9 +25,3 @@ dev = [
     "ipykernel>=6.30.0",
     "ipython>=8.18.1",
 ]
-# facultatif — permet de fixer les sources ou configurations supplémentaires
-
-
-[tool.uv.sources]
-openfisca-nouvelle_caledonie-data = { path = "../openfisca-nouvelle_caledonie-data" }
-openfisca-survey-manager = { path = "../openfisca-survey-manager" }
